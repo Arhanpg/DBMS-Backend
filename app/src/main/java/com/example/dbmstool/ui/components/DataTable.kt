@@ -18,11 +18,10 @@ import com.example.dbmstool.data.model.QueryResult
 
 @Composable
 fun DataTable(result: QueryResult, modifier: Modifier = Modifier) {
-    val scrollState = rememberScrollState()
     val colWidth = 140.dp
     val borderColor = MaterialTheme.colorScheme.outlineVariant
+    val horizontalScrollState = rememberScrollState()
 
-    // Show message when there are no columns at all (empty result set)
     if (result.columns.isEmpty()) {
         Text(
             text = "No data returned.",
@@ -33,13 +32,18 @@ fun DataTable(result: QueryResult, modifier: Modifier = Modifier) {
         return
     }
 
-    Box(modifier = modifier) {
-        LazyColumn {
+    // This Box prevents the HorizontalScroll from conflicting with the Vertical LazyColumn
+    Box(
+        modifier = modifier // Use the passed-in modifier (likely fillMaxSize or weight)
+            .horizontalScroll(horizontalScrollState)
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize() // Forces LazyColumn to occupy only available screen space
+        ) {
             // Header row
             item {
                 Row(
                     modifier = Modifier
-                        .horizontalScroll(scrollState)
                         .background(MaterialTheme.colorScheme.primaryContainer)
                 ) {
                     result.columns.forEach { col ->
@@ -64,15 +68,15 @@ fun DataTable(result: QueryResult, modifier: Modifier = Modifier) {
                         text = "No rows returned.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier
+                            .width(colWidth * result.columns.size.coerceAtLeast(1))
+                            .padding(16.dp)
                     )
                 }
             } else {
-                // Use itemsIndexed so we have a reliable index for row striping
                 itemsIndexed(result.rows) { index, row ->
                     Row(
                         modifier = Modifier
-                            .horizontalScroll(scrollState)
                             .background(
                                 if (index % 2 == 0)
                                     MaterialTheme.colorScheme.surface

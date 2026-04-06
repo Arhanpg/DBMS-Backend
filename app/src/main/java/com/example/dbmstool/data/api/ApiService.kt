@@ -26,6 +26,6 @@ interface ApiService {
         @Body request: QueryRunRequest = QueryRunRequest()
     ): QueryResult
 
-    @POST("query/custom")
+    @POST("custom/run")
     suspend fun runCustomQuery(@Body request: CustomQueryRequest): QueryResult
 }

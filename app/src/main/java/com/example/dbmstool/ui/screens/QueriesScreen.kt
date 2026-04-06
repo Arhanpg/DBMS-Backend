@@ -49,9 +49,14 @@ fun QueriesScreen(viewModel: MainViewModel) {
 
         when (val state = presetState) {
             is UiState.Loading -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            is UiState.Error -> ErrorCard(state.message)
+            // Corrected ErrorCard call to use a standard Text or custom Error component if defined
+            is UiState.Error -> Text(state.message, color = MaterialTheme.colorScheme.error)
             is UiState.Success -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyColumn(
+                    // Using fillMaxSize here is fine as long as parents aren't scrollable
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     items(state.data) { query ->
                         QueryCard(
                             query = query,
@@ -125,26 +130,14 @@ fun QueryCard(
                 }
             }
 
-            // Show input field if query needs a parameter
             if (needsInput) {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = inputValue,
                     onValueChange = onInputChange,
                     modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text(
-                            when {
-                                query.params.contains("banner_number") -> "Enter Banner Number (e.g. S100)"
-                                query.params.contains("semester") -> "Enter Semester (e.g. Sem1, Sem2, Sem3)"
-                                query.params.contains("hall_name") -> "Enter Hall Name"
-                                else -> "Enter value"
-                            },
-                            fontSize = 12.sp
-                        )
-                    },
-                    singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
+                    label = { Text("Input Value", fontSize = 12.sp) },
+                    singleLine = true
                 )
             }
 
@@ -153,30 +146,29 @@ fun QueryCard(
                     Spacer(modifier = Modifier.height(10.dp))
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(8.dp))
+
                     when (val state = resultState) {
                         is UiState.Loading -> {
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.padding(16.dp)
-                                )
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
                             }
                         }
-                        is UiState.Error -> ErrorCard(state.message)
+                        is UiState.Error -> Text(state.message, color = MaterialTheme.colorScheme.error)
                         is UiState.Success -> {
-                            @Suppress("UNCHECKED_CAST")
-                            val result = state.data
-                                    as? com.example.dbmstool.data.model.QueryResult
+                            val result = state.data as? com.example.dbmstool.data.model.QueryResult
                             if (result != null) {
                                 Text(
                                     text = "${result.rows.size} row(s) returned",
                                     fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(bottom = 6.dp)
+                                    color = MaterialTheme.colorScheme.outline
                                 )
-                                DataTable(result = result)
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // FIX: Wrap DataTable in a Box with a FIXED HEIGHT
+                                // This prevents the infinite height constraint error
+                                Box(modifier = Modifier.heightIn(max = 400.dp)) {
+                                    DataTable(result = result)
+                                }
                             }
                         }
                         else -> {}

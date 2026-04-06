@@ -86,23 +86,26 @@ class MainViewModel : ViewModel() {
 
     fun runPresetQuery(query: PresetQuery) {
         val input = _queryInputs.value[query.id]?.trim() ?: ""
+
         viewModelScope.launch {
             _queryResults.value = _queryResults.value + (query.id to UiState.Loading)
+
             try {
-                val request = when {
-                    query.params.contains("banner_number") ->
-                        QueryRunRequest(banner_number = input)
-                    query.params.contains("semester") ->
-                        QueryRunRequest(semester = input)
-                    query.params.contains("hall_name") ->
-                        QueryRunRequest(hall_name = input)
-                    else -> QueryRunRequest()
-                }
+                val request =
+                    if (query.params.isNotEmpty() && input.isNotEmpty()) {
+                        QueryRunRequest(param_values = listOf(input))
+                    } else {
+                        QueryRunRequest()
+                    }
+
                 val result = repo.runPresetQuery(query.id, request)
-                _queryResults.value = _queryResults.value + (query.id to UiState.Success(result))
+
+                _queryResults.value =
+                    _queryResults.value + (query.id to UiState.Success(result))
+
             } catch (e: Exception) {
-                _queryResults.value = _queryResults.value +
-                        (query.id to UiState.Error(e.message ?: "Query failed"))
+                _queryResults.value =
+                    _queryResults.value + (query.id to UiState.Error(e.message ?: "Query failed"))
             }
         }
     }
