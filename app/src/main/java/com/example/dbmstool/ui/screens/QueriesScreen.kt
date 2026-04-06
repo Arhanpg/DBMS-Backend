@@ -1,6 +1,6 @@
 package com.example.dbmstool.ui.screens
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,12 +22,17 @@ import com.example.dbmstool.viewmodel.UiState
 fun QueriesScreen(viewModel: MainViewModel) {
     val presetState by viewModel.presetQueries.collectAsState()
     val queryResults by viewModel.queryResults.collectAsState()
+    val queryInputs by viewModel.queryInputs.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.loadPresetQueries()
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
         Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = "Preset Queries",
@@ -51,7 +56,9 @@ fun QueriesScreen(viewModel: MainViewModel) {
                         QueryCard(
                             query = query,
                             resultState = queryResults[query.id],
-                            onRun = { viewModel.runPresetQuery(query.id) }
+                            inputValue = queryInputs[query.id] ?: "",
+                            onInputChange = { viewModel.updateQueryInput(query.id, it) },
+                            onRun = { viewModel.runPresetQuery(query) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -66,9 +73,12 @@ fun QueriesScreen(viewModel: MainViewModel) {
 fun QueryCard(
     query: PresetQuery,
     resultState: UiState<*>?,
+    inputValue: String,
+    onInputChange: (String) -> Unit,
     onRun: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val needsInput = query.params.isNotEmpty()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -81,7 +91,7 @@ fun QueryCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -115,6 +125,29 @@ fun QueryCard(
                 }
             }
 
+            // Show input field if query needs a parameter
+            if (needsInput) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = inputValue,
+                    onValueChange = onInputChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(
+                            when {
+                                query.params.contains("banner_number") -> "Enter Banner Number (e.g. S100)"
+                                query.params.contains("semester") -> "Enter Semester (e.g. Sem1, Sem2, Sem3)"
+                                query.params.contains("hall_name") -> "Enter Hall Name"
+                                else -> "Enter value"
+                            },
+                            fontSize = 12.sp
+                        )
+                    },
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
+                )
+            }
+
             AnimatedVisibility(visible = expanded && resultState != null) {
                 Column {
                     Spacer(modifier = Modifier.height(10.dp))
@@ -126,13 +159,16 @@ fun QueryCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                                CircularProgressIndicator(
+                                    modifier = Modifier.padding(16.dp)
+                                )
                             }
                         }
                         is UiState.Error -> ErrorCard(state.message)
                         is UiState.Success -> {
                             @Suppress("UNCHECKED_CAST")
-                            val result = state.data as? com.example.dbmstool.data.model.QueryResult
+                            val result = state.data
+                                    as? com.example.dbmstool.data.model.QueryResult
                             if (result != null) {
                                 Text(
                                     text = "${result.rows.size} row(s) returned",

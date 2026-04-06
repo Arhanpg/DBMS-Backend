@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dbmstool.data.model.PresetQuery
 import com.example.dbmstool.data.model.QueryResult
+import com.example.dbmstool.data.model.QueryRunRequest
 import com.example.dbmstool.repository.AccommodationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,6 @@ sealed class UiState<out T> {
 class MainViewModel : ViewModel() {
     private val repo = AccommodationRepository()
 
-    // Tables
     private val _tables = MutableStateFlow<UiState<List<String>>>(UiState.Idle)
     val tables: StateFlow<UiState<List<String>>> = _tables
 
@@ -29,14 +29,16 @@ class MainViewModel : ViewModel() {
     private val _selectedTable = MutableStateFlow<String?>(null)
     val selectedTable: StateFlow<String?> = _selectedTable
 
-    // Preset queries
     private val _presetQueries = MutableStateFlow<UiState<List<PresetQuery>>>(UiState.Idle)
     val presetQueries: StateFlow<UiState<List<PresetQuery>>> = _presetQueries
 
     private val _queryResults = MutableStateFlow<Map<Int, UiState<QueryResult>>>(emptyMap())
     val queryResults: StateFlow<Map<Int, UiState<QueryResult>>> = _queryResults
 
-    // Custom query
+    // Stores user input per query id
+    private val _queryInputs = MutableStateFlow<Map<Int, String>>(emptyMap())
+    val queryInputs: StateFlow<Map<Int, String>> = _queryInputs
+
     private val _customSql = MutableStateFlow("")
     val customSql: StateFlow<String> = _customSql
 
@@ -78,22 +80,34 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun runPresetQuery(id: Int) {
+    fun updateQueryInput(queryId: Int, value: String) {
+        _queryInputs.value = _queryInputs.value + (queryId to value)
+    }
+
+    fun runPresetQuery(query: PresetQuery) {
+        val input = _queryInputs.value[query.id]?.trim() ?: ""
         viewModelScope.launch {
-            _queryResults.value = _queryResults.value + (id to UiState.Loading)
+            _queryResults.value = _queryResults.value + (query.id to UiState.Loading)
             try {
-                val result = repo.runPresetQuery(id)
-                _queryResults.value = _queryResults.value + (id to UiState.Success(result))
+                val request = when {
+                    query.params.contains("banner_number") ->
+                        QueryRunRequest(banner_number = input)
+                    query.params.contains("semester") ->
+                        QueryRunRequest(semester = input)
+                    query.params.contains("hall_name") ->
+                        QueryRunRequest(hall_name = input)
+                    else -> QueryRunRequest()
+                }
+                val result = repo.runPresetQuery(query.id, request)
+                _queryResults.value = _queryResults.value + (query.id to UiState.Success(result))
             } catch (e: Exception) {
                 _queryResults.value = _queryResults.value +
-                        (id to UiState.Error(e.message ?: "Query failed"))
+                        (query.id to UiState.Error(e.message ?: "Query failed"))
             }
         }
     }
 
-    fun updateCustomSql(sql: String) {
-        _customSql.value = sql
-    }
+    fun updateCustomSql(sql: String) { _customSql.value = sql }
 
     fun runCustomQuery() {
         val sql = _customSql.value.trim()
@@ -108,7 +122,5 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun clearCustomResult() {
-        _customResult.value = UiState.Idle
-    }
+    fun clearCustomResult() { _customResult.value = UiState.Idle }
 }

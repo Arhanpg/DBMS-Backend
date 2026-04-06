@@ -4,18 +4,7 @@ data class PresetQuery(
     val id: Int,
     val label: String,
     val description: String,
-    val params: List<ParamDescriptor> = emptyList()
-)
-
-data class ParamDescriptor(
-    val name: String,
-    val hint: String = ""
-)
-
-// Body sent with every preset-query run call.
-// Non-parameterised queries just send an empty list.
-data class RunQueryRequest(
-    val param_values: List<String> = emptyList()
+    val params: List<String> = emptyList()
 )
 
 data class QueryResult(
@@ -27,6 +16,8 @@ data class CustomQueryRequest(
     val sql: String
 )
 
-data class TableListResponse(
-    val tables: List<String>
+data class QueryRunRequest(
+    val banner_number: String? = null,
+    val semester: String? = null,
+    val hall_name: String? = null
 )
