@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
     // 10.0.2.2 = localhost when running on Android emulator
-    private const val BASE_URL = "https://dbms-backend-b6av.onrender.com/"
+    private const val BASE_URL = "https://dbms-backend-theta.vercel.app/"
 
     val api: ApiService by lazy {
         Retrofit.Builder()
