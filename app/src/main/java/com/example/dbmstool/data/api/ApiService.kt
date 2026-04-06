@@ -3,6 +3,7 @@ package com.example.dbmstool.data.api
 import com.example.dbmstool.data.model.CustomQueryRequest
 import com.example.dbmstool.data.model.PresetQuery
 import com.example.dbmstool.data.model.QueryResult
+import com.example.dbmstool.data.model.RunQueryRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -16,11 +17,15 @@ interface ApiService {
     @GET("tables/{name}")
     suspend fun getTableData(@Path("name") name: String): QueryResult
 
-    @GET("queries")
+    @GET("queries/")
     suspend fun getPresetQueries(): List<PresetQuery>
 
+    // Backend requires a body even for non-parameterised queries
     @POST("queries/{id}/run")
-    suspend fun runPresetQuery(@Path("id") id: Int): QueryResult
+    suspend fun runPresetQuery(
+        @Path("id") id: Int,
+        @Body request: RunQueryRequest = RunQueryRequest()
+    ): QueryResult
 
     @POST("query/custom")
     suspend fun runCustomQuery(@Body request: CustomQueryRequest): QueryResult

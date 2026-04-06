@@ -5,7 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,9 +22,10 @@ fun DataTable(result: QueryResult, modifier: Modifier = Modifier) {
     val colWidth = 140.dp
     val borderColor = MaterialTheme.colorScheme.outlineVariant
 
-    if (result.rows.isEmpty()) {
+    // Show message when there are no columns at all (empty result set)
+    if (result.columns.isEmpty()) {
         Text(
-            text = "No rows returned.",
+            text = "No data returned.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier.padding(16.dp)
@@ -56,29 +57,41 @@ fun DataTable(result: QueryResult, modifier: Modifier = Modifier) {
                     }
                 }
             }
-            // Data rows
-            items(result.rows.toList()) { row ->
-                Row(
-                    modifier = Modifier
-                        .horizontalScroll(scrollState)
-                        .background(
-                            if (result.rows.indexOf(row) % 2 == 0)
-                                MaterialTheme.colorScheme.surface
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
-                ) {
-                    result.columns.forEach { col ->
-                        Text(
-                            text = row[col]?.toString() ?: "—",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .width(colWidth)
-                                .border(0.5.dp, borderColor)
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                            maxLines = 2
-                        )
+
+            if (result.rows.isEmpty()) {
+                item {
+                    Text(
+                        text = "No rows returned.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            } else {
+                // Use itemsIndexed so we have a reliable index for row striping
+                itemsIndexed(result.rows) { index, row ->
+                    Row(
+                        modifier = Modifier
+                            .horizontalScroll(scrollState)
+                            .background(
+                                if (index % 2 == 0)
+                                    MaterialTheme.colorScheme.surface
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            )
+                    ) {
+                        result.columns.forEach { col ->
+                            Text(
+                                text = row[col]?.toString() ?: "\u2014",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier
+                                    .width(colWidth)
+                                    .border(0.5.dp, borderColor)
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                maxLines = 2
+                            )
+                        }
                     }
                 }
             }
