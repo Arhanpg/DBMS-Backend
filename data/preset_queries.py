@@ -1,5 +1,5 @@
-# All 14 preset queries aligned to the actual HK database schema.
-# Column names match the CREATE TABLE statements exactly.
+# All 14 preset queries aligned to the updated UniversityAccommodation schema.
+# Table names: Advisor, Room, Apartment, Apartment_Room, Next_Of_Kin
 # Queries with runtime parameters use %s placeholders (mysql-connector style).
 
 PRESET_QUERIES = [
@@ -10,10 +10,11 @@ PRESET_QUERIES = [
         "params": [],
         "sql": """
             SELECT
-                h.name          AS hall_name,
-                h.manager_name,
-                h.phone         AS telephone
+                h.name                                        AS hall_name,
+                CONCAT(st.first_name, ' ', st.last_name)      AS manager_name,
+                h.phone                                       AS telephone
             FROM Hall h
+            JOIN Staff st ON h.manager_id = st.staff_id
             ORDER BY h.name
         """
     },
@@ -70,54 +71,58 @@ PRESET_QUERIES = [
             SELECT
                 s.banner_no,
                 CONCAT(s.first_name, ' ', s.last_name) AS student_name,
-                COUNT(i.invoice_no)                    AS invoices_paid,
-                SUM(i.payment_due)                     AS total_rent_paid
+                COUNT(i.invoice_no)                    AS total_invoices,
+                SUM(i.payment_due)                     AS total_amount_billed,
+                SUM(CASE WHEN i.payment_date IS NOT NULL THEN i.payment_due ELSE 0 END) AS total_amount_paid,
+                SUM(CASE WHEN i.payment_date IS NULL     THEN i.payment_due ELSE 0 END) AS total_amount_outstanding
             FROM Student s
-            JOIN Lease l   ON s.banner_no   = l.banner_no
-            JOIN Invoice i ON l.lease_no    = i.lease_no
-            WHERE i.payment_date IS NOT NULL
-              AND s.banner_no = %s
+            LEFT JOIN Invoice i ON s.banner_no = i.banner_no
+            WHERE s.banner_no = %s
             GROUP BY s.banner_no, s.first_name, s.last_name
         """
     },
     {
         "id": 5,
-        "label": "(e) Unpaid invoices by semester",
-        "description": "Students who have not paid their invoices — enter semester (e.g. Sem1, Sem2, Sem3)",
-        "params": [
-            {"name": "semester", "hint": "e.g. Sem1", "type": "text"}
-        ],
+        "label": "(e) Unpaid invoices",
+        "description": "Students who have not paid their invoices (all outstanding invoices)",
+        "params": [],
         "sql": """
             SELECT
                 s.banner_no,
                 CONCAT(s.first_name, ' ', s.last_name) AS student_name,
+                s.email,
+                s.mobile,
                 i.invoice_no,
                 i.semester,
                 i.payment_due,
-                i.payment_date
-            FROM Invoice i
-            JOIN Lease l   ON i.lease_no  = l.lease_no
-            JOIN Student s ON l.banner_no = s.banner_no
+                i.first_reminder,
+                i.second_reminder
+            FROM Student s
+            JOIN Invoice i ON s.banner_no = i.banner_no
             WHERE i.payment_date IS NULL
-              AND i.semester = %s
-            ORDER BY s.last_name
+              AND i.payment_due > 0
+            ORDER BY s.banner_no, i.invoice_no
         """
     },
     {
         "id": 6,
         "label": "(f) Unsatisfactory inspections",
-        "description": "Apartment inspections where the property was found to be unsatisfactory",
+        "description": "Apartment inspections where the property was found to be unsatisfactory (Fail)",
         "params": [],
         "sql": """
             SELECT
-                inspection_id,
-                staff_name,
-                inspection_date,
-                status,
-                comments
-            FROM Inspection
-            WHERE status = 'Fail'
-            ORDER BY inspection_date DESC
+                ins.inspection_id,
+                a.apartment_id,
+                a.address                                     AS apartment_address,
+                CONCAT(st.first_name, ' ', st.last_name)      AS inspected_by,
+                ins.inspection_date,
+                ins.status,
+                ins.comments
+            FROM Inspection ins
+            JOIN Apartment a  ON ins.apartment_id = a.apartment_id
+            JOIN Staff st     ON ins.staff_id     = st.staff_id
+            WHERE ins.status = 'Fail'
+            ORDER BY ins.inspection_date DESC
         """
     },
     {
@@ -129,15 +134,15 @@ PRESET_QUERIES = [
         ],
         "sql": """
             SELECT
-                h.name          AS hall_name,
+                h.name                                        AS hall_name,
                 s.banner_no,
-                CONCAT(s.first_name, ' ', s.last_name) AS student_name,
-                hr.room_no,
-                hr.place_no
+                CONCAT(s.first_name, ' ', s.last_name)        AS student_name,
+                r.room_no,
+                r.place_no
             FROM Student s
-            JOIN Lease l     ON s.banner_no  = l.banner_no
-            JOIN HallRoom hr ON l.place_no   = hr.place_no
-            JOIN Hall h      ON hr.hall_id   = h.hall_id
+            JOIN Lease l  ON s.banner_no = l.banner_no
+            JOIN Room r   ON l.place_no  = r.place_no
+            JOIN Hall h   ON r.hall_id   = h.hall_id
             WHERE h.name = %s
             ORDER BY s.last_name
         """
@@ -154,10 +159,11 @@ PRESET_QUERIES = [
                 email,
                 mobile,
                 category,
-                nationality
+                nationality,
+                major
             FROM Student
             WHERE status = 'waiting'
-            ORDER BY last_name
+            ORDER BY last_name, first_name
         """
     },
     {
@@ -186,15 +192,15 @@ PRESET_QUERIES = [
                 s.email,
                 s.mobile
             FROM Student s
-            LEFT JOIN NextOfKin nk ON s.banner_no = nk.banner_no
+            LEFT JOIN Next_Of_Kin nk ON s.banner_no = nk.banner_no
             WHERE nk.banner_no IS NULL
-            ORDER BY s.last_name
+            ORDER BY s.last_name, s.first_name
         """
     },
     {
         "id": 11,
-        "label": "(k) Adviser for a student",
-        "description": "Name and phone number of the Adviser for a given student — enter banner number",
+        "label": "(k) Advisor for a student",
+        "description": "Name and phone number of the Advisor for a given student — enter banner number",
         "params": [
             {"name": "banner_no", "hint": "e.g. S100", "type": "text"}
         ],
@@ -202,15 +208,14 @@ PRESET_QUERIES = [
             SELECT
                 s.banner_no,
                 CONCAT(s.first_name, ' ', s.last_name) AS student_name,
-                a.full_name     AS adviser_name,
-                a.phone         AS adviser_phone,
-                a.email         AS adviser_email,
+                a.full_name                            AS advisor_name,
+                a.phone                                AS advisor_phone,
+                a.email                                AS advisor_email,
                 a.department,
-                a.room_no       AS adviser_room
+                a.room_no                              AS advisor_room
             FROM Student s
-            JOIN Adviser a ON s.major = a.department
+            JOIN Advisor a ON s.advisor_id = a.advisor_id
             WHERE s.banner_no = %s
-            LIMIT 1
         """
     },
     {
@@ -223,7 +228,7 @@ PRESET_QUERIES = [
                 MIN(rent)           AS min_rent,
                 MAX(rent)           AS max_rent,
                 ROUND(AVG(rent), 2) AS avg_rent
-            FROM HallRoom
+            FROM Room
         """
     },
     {
@@ -233,10 +238,10 @@ PRESET_QUERIES = [
         "params": [],
         "sql": """
             SELECT
-                h.name              AS hall_name,
-                COUNT(hr.place_no)  AS total_places
+                h.name             AS hall_name,
+                COUNT(r.place_no)  AS total_places
             FROM Hall h
-            JOIN HallRoom hr ON h.hall_id = hr.hall_id
+            JOIN Room r ON h.hall_id = r.hall_id
             GROUP BY h.hall_id, h.name
             ORDER BY total_places DESC
         """
@@ -249,8 +254,8 @@ PRESET_QUERIES = [
         "sql": """
             SELECT
                 staff_id,
-                CONCAT(first_name, ' ', last_name)              AS staff_name,
-                TIMESTAMPDIFF(YEAR, dob, CURDATE())             AS age,
+                CONCAT(first_name, ' ', last_name)  AS staff_name,
+                TIMESTAMPDIFF(YEAR, dob, CURDATE())  AS age,
                 position,
                 location
             FROM Staff

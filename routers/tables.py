@@ -7,16 +7,16 @@ router = APIRouter(prefix="/tables", tags=["Tables"])
 # These must exactly match your MySQL table names (case-sensitive on Aiven Linux)
 ALLOWED_TABLES = [
     "Student",
-    "Adviser",
+    "Advisor",
     "Hall",
-    "HallRoom",
-    "Flat",
-    "FlatRoom",
+    "Room",
+    "Apartment",
+    "Apartment_Room",
     "Lease",
     "Invoice",
     "Staff",
     "Inspection",
-    "NextOfKin",
+    "Next_Of_Kin",
     "Course",
 ]
 
