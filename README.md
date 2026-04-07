@@ -4,6 +4,10 @@ Backend API for the **University Accommodation Office DBMS project**, built with
 
 This README is designed to be used as-is on both the `main` and `master` branches.
 
+For the dedicated Android app documentation aligned to the `master` branch content, see:
+
+- [`README.master.md`](./README.master.md)
+
 ## Features
 
 - FastAPI REST backend with Swagger docs (`/docs`) and ReDoc (`/redoc`)
