@@ -68,7 +68,28 @@ fun AppNavigation() {
             composable("home") { HomeScreen() }
             composable("tables") { TablesScreen(viewModel) }
             composable("queries") { QueriesScreen(viewModel) }
-            composable("custom") { CustomQueryScreen(viewModel) }
+            composable("add_user") {
+                AddUserScreen(
+                    onSave = { data ->
+
+                        if (data.isNotEmpty()) {
+                            // TODO: save to database later
+                            println("Saved: $data")
+                        }
+
+                        // go back in BOTH cases (save or cancel)
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable("custom") {
+                CustomQueryScreen(
+                    viewModel = viewModel,
+                    onAddUserClick = {
+                        navController.navigate("add_user")
+                    }
+                )
+            }
         }
     }
 }
